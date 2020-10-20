@@ -1,0 +1,80 @@
+version: '3.7'
+
+#Portas para liberar:
+#    - 8000
+#    - 8080
+#    - 9000   
+
+services:
+    visualizer:
+        image: dockersamples/visualizer:stable
+        ports:
+          - 8000:8080
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        deploy:
+          mode: replicated
+          replicas: 2
+          placement:
+            constraints:
+              - node.role == manager
+          resources:
+            reservations:
+              cpus: '0.1'
+              memory: 256M
+            limits:
+              cpus: '0.4'
+              memory: 256M
+
+    mysql:
+        image: mysql:5.7
+        restart: always
+        deploy:
+          mode: replicated
+          replicas: 2
+          placement:
+            constraints: 
+                - node.role == worker
+        environment:
+          MYSQL_DATABASE: wordpress_data
+          MYSQL_USER: roberto
+          MYSQL_PASSWORD: roberto
+          MYSQL_RANDOM_ROOT_PASSWORD: '1'
+        volumes:
+          - db:/var/lib/mysql
+
+    wordpress:
+        image: wordpress
+        depends_on:
+            - mysql
+        ports:
+          - "8080:80"
+        volumes:
+          - wordpress:/var/www/html
+        environment:
+          WORDPRESS_DB_HOST: mysql
+          WORDPRESS_DB_USER: roberto
+          WORDPRESS_DB_PASSWORD: roberto
+          WORDPRESS_DB_NAME: wordpress_data
+        deploy:
+          mode: replicated
+          replicas: 2
+          placement:
+            constraints:
+              - node.role == worker
+          endpoint_mode: vip
+
+    portainer:
+        image: portainer/portainer
+        deploy:
+            mode: replicated
+        ports:
+          - "9000:9000"
+        volumes:
+          - portainer_data:/data
+          - /var/run/docker.sock:/var/run/docker.sock
+
+volumes: 
+    wordpress:    
+    db:    
+    portainer_data:  
